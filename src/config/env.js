@@ -1,4 +1,3 @@
-// src/config/env.js
 require('dotenv').config();
 
 // Baca daftar grup WA, fallback ke string kosong jika tidak ada
