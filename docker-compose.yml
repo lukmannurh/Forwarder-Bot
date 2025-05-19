@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   app:
     build: .
@@ -8,5 +9,6 @@ services:
       - .env
     ports:
       - "2208:2208"
+    # Persist session data WhatsApp Web
     volumes:
       - ./.wwebjs_auth:/usr/src/app/.wwebjs_auth
