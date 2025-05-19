@@ -57,7 +57,7 @@ async function initBots() {
     if (msg.embeds.length) {
       for (const embed of msg.embeds) {
         if (embed.title) {
-          lines.push(`*${embed.title}*`);
+          lines.push(`${embed.title}`);
         }
         if (embed.description) {
           embed.description.split(/\r?\n/).forEach(line => {
@@ -66,7 +66,7 @@ async function initBots() {
         }
         // Fields
         for (const field of embed.fields) {
-          lines.push(`*${field.name}:*`);
+          lines.push(`${field.name}:`);
           const items = field.value
             .replace(/<:[^>]+>/g, '')
             .split(/\r?\n/)
