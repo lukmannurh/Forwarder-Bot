@@ -1,4 +1,3 @@
-// src/bots/forwarderBot.js
 const puppeteer   = require('puppeteer');
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { Client: WAClient, LocalAuth }        = require('whatsapp-web.js');
@@ -17,7 +16,7 @@ async function initBots() {
     partials: [Partials.Message, Partials.Channel]
   });
 
-  // 2) Setup WhatsApp-Web
+  // 2) Setup WhatsApp
   const wa = new WAClient({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -27,59 +26,54 @@ async function initBots() {
     }
   });
 
-  // 3) Login WA
+  // 3) Login WA & wait
   const waReady = new Promise(r => wa.once('ready', r));
   wa.on('qr', qr => qrcode.generate(qr, { small: true }));
   await wa.initialize();
   await waReady;
   logger.info('WhatsApp client ready');
 
-  // 4) Login Discord
+  // 4) Login Discord & wait
   const dcReady = new Promise(r => discord.once('ready', r));
   await discord.login(env.DISCORD_TOKEN);
   await dcReady;
   logger.info(`Discord ready as ${discord.user.tag}`);
 
-  // 5) Forward semua pesan dari Bot pihak ketiga
+  // 5) Forward setiap pesan
   discord.on('messageCreate', async msg => {
     if (msg.author.id !== env.THIRD_PARTY_BOT_ID) return;
 
-    // Bangun teks body
+    // bangun isi pesan
     let body = '';
-    // a) pesan teks biasa
     if (msg.content?.trim()) {
       body = msg.content.trim();
-    }
-    // b) embed generic
-    else if (msg.embeds.length > 0) {
+    } else if (msg.embeds.length > 0) {
       const e = msg.embeds[0];
-      if (e.title)       body += `**${e.title}**\n`;
+      if (e.title)       body += `${e.title}\n`;
       if (e.description) body += `${e.description}\n`;
       for (const f of e.fields) {
-        // hapus emoji custom tapi pertahankan teksnya
-        const val = f.value.replace(/<:[^>]+>/g,'').trim();
-        body += `\n${f.name}: ${val}`;
+        body += `\n${f.name}: ${f.value.replace(/<:[^>]+>/g, '').trim()}`;
       }
     } else {
       body = '[attachment]';
     }
 
-    // kirim ke setiap grup WA
+    // kirim ke semua grup tanpa link & tanpa asterisks
     const chats = await wa.getChats();
-    for (const gName of env.WA_GROUP_NAMES) {
-      const g = chats.find(c => c.isGroup && c.name === gName);
-      if (!g) {
-        logger.error(`Group "${gName}" not found`);
-        continue;
-      }
-      // tambahkan tag header & footer jika perlu
+    for (const name of env.WA_GROUP_NAMES) {
+      const group = chats.find(c => c.isGroup && c.name === name);
+      if (!group) continue;
+
       const text = [
         `🤖 From Bot: ${msg.author.username}`,
         `💬 ${body.trim()}`,
-        `🔗 ${msg.url}`
+        '',                // kalau mau baris kosong sebelum hashtag
+        '#AyoMabarRelMati',
+        '#Msh'
       ].join('\n');
-      await wa.sendMessage(g.id._serialized, text);
-      logger.info(`Forwarded to "${gName}"`);
+
+      await wa.sendMessage(group.id._serialized, text);
+      logger.info(`Forwarded to "${name}"`);
     }
   });
 }
