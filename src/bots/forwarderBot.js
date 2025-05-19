@@ -1,3 +1,4 @@
+// src/bots/forwarderBot.js
 const puppeteer = require('puppeteer');
 const { Client, GatewayIntentBits, Partials } = require('discord.js');
 const { Client: WAClient, LocalAuth } = require('whatsapp-web.js');
@@ -16,7 +17,7 @@ async function initBots() {
     partials: [Partials.Message, Partials.Channel]
   });
 
-  // 2) Setup WhatsApp-Web client
+  // 2) Setup WhatsApp Web client
   const wa = new WAClient({
     authStrategy: new LocalAuth(),
     puppeteer: {
@@ -26,26 +27,27 @@ async function initBots() {
     }
   });
 
-  // 3) Login WA & wait ready
+  // 3) Login WA and wait for ready
   const waReady = new Promise(resolve => wa.once('ready', resolve));
   wa.on('qr', qr => qrcode.generate(qr, { small: true }));
   await wa.initialize();
   await waReady;
   logger.info('WhatsApp client ready');
 
-  // 4) Login Discord & wait ready
+  // 4) Login Discord and wait for ready
   const dcReady = new Promise(resolve => discord.once('ready', resolve));
   await discord.login(env.DISCORD_TOKEN);
   await dcReady;
   logger.info(`Discord ready as ${discord.user.tag}`);
 
-  // 5) Handle and forward all messages
+  // 5) Handle all messages from third-party bot or webhooks
   discord.on('messageCreate', async msg => {
     if (msg.author.id !== env.THIRD_PARTY_BOT_ID && !msg.webhookId) return;
 
-    // Build unified message lines
+    // Build message lines
     let lines = [];
     lines.push(`🤖 From Bot: ${msg.author.username}`);
+    lines.push('');
 
     // Plain text
     if (msg.content?.trim()) {
@@ -55,10 +57,10 @@ async function initBots() {
 
     // Embeds
     if (msg.embeds.length) {
-      msg.embeds.forEach(embed => {
+      for (const embed of msg.embeds) {
         if (embed.title) lines.push(embed.title);
         if (embed.description) {
-          embed.description.split(/\r?\n/).forEach(line => {
+          embed.description.split(/?/).forEach(line => {
             if (line.trim()) lines.push(line.trim());
           });
         }
@@ -67,7 +69,7 @@ async function initBots() {
           lines.push(`${f.name}: ${val}`);
         });
         lines.push('');
-      });
+      }
     }
 
     // Attachments fallback
@@ -76,16 +78,16 @@ async function initBots() {
       lines.push('');
     }
 
-    // Footer
+    // Footer hashtags
     lines.push('#AyoMabarRelMati');
     lines.push('#Msh');
 
-    // Remove all asterisks
+    // Remove all asterisks globally
     lines = lines.map(l => l.replace(/\*/g, ''));
 
-    const text = lines.join('\n');
+    const text = lines.join('');
 
-    // Forward to all WA groups
+    // Forward to all configured WhatsApp groups
     const chats = await wa.getChats();
     for (const grpName of env.WA_GROUP_NAMES) {
       const group = chats.find(c => c.isGroup && c.name === grpName);
